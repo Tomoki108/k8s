@@ -1,0 +1,67 @@
+# ==== 変数定義 ====
+PROJECT_ID           := your-gcp-project
+IMAGE_NAME           := simple-api
+IMAGE_TAG            := v1
+ZONE                 := asia-northeast1-a
+CLUSTER_NAME         := simple-cluster
+NAMESPACE            := default
+DEPLOYMENT_YAML      := deployment.yaml
+
+# Artifact Registry 用設定
+AR_LOCATION          := asia-northeast1
+AR_REPOSITORY        := my-repo         # 事前に Artifact Registry 上で作成しておく
+AR_HOST              := $(AR_LOCATION)-docker.pkg.dev
+AR_REPO_PATH         := $(AR_HOST)/$(PROJECT_ID)/$(AR_REPOSITORY)
+IMAGE_URI            := $(AR_REPO_PATH)/$(IMAGE_NAME):$(IMAGE_TAG)
+
+# ==== デフォルトターゲット ====
+.PHONY: all
+all: build push deploy
+
+# ==== コンテナビルド & プッシュ ====
+.PHONY: build
+build:
+	docker build -t $(IMAGE_URI) .
+
+.PHONY: push
+push: build
+	gcloud auth configure-docker $(AR_HOST) --quiet
+	docker push $(IMAGE_URI)
+
+# ==== GKE クラスター操作 ====
+.PHONY: cluster-create
+cluster-create:
+	gcloud container clusters create $(CLUSTER_NAME) \
+		--zone $(ZONE) \
+		--num-nodes 1 \
+		--machine-type e2-medium
+
+.PHONY: cluster-delete
+cluster-delete:
+	gcloud container clusters delete $(CLUSTER_NAME) \
+		--zone $(ZONE) --quiet
+
+# ==== デプロイ & 管理 ====
+.PHONY: deploy
+deploy: push
+	kubectl apply -f $(DEPLOYMENT_YAML)
+
+.PHONY: rollout-status
+rollout-status:
+	kubectl rollout status deployment/$(IMAGE_NAME) \
+		-n $(NAMESPACE)
+
+.PHONY: get-ip
+get-ip:
+	kubectl get svc $(IMAGE_NAME)-lb \
+		-n $(NAMESPACE) \
+		-o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+
+# ==== クリーンアップ ====
+.PHONY: clean
+clean:
+	docker rmi $(IMAGE_URI) || true
+
+.PHONY: uninstall
+uninstall:
+	kubectl delete -f $(DEPLOYMENT_YAML) --ignore-not-found
