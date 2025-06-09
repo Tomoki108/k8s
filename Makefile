@@ -1,5 +1,5 @@
 # ==== 変数定義 ====
-PROJECT_ID           := your-gcp-project
+PROJECT_ID           := tomoki-sandbox
 IMAGE_NAME           := simple-api
 IMAGE_TAG            := v1
 ZONE                 := asia-northeast1-a
@@ -9,7 +9,7 @@ DEPLOYMENT_YAML      := deployment.yaml
 
 # Artifact Registry 用設定
 AR_LOCATION          := asia-northeast1
-AR_REPOSITORY        := my-repo         # 事前に Artifact Registry 上で作成しておく
+AR_REPOSITORY        := my-repo
 AR_HOST              := $(AR_LOCATION)-docker.pkg.dev
 AR_REPO_PATH         := $(AR_HOST)/$(PROJECT_ID)/$(AR_REPOSITORY)
 IMAGE_URI            := $(AR_REPO_PATH)/$(IMAGE_NAME):$(IMAGE_TAG)
@@ -32,6 +32,7 @@ push: build
 .PHONY: cluster-create
 cluster-create:
 	gcloud container clusters create $(CLUSTER_NAME) \
+		--project $(PROJECT_ID) \
 		--zone $(ZONE) \
 		--num-nodes 1 \
 		--machine-type e2-medium
@@ -39,6 +40,7 @@ cluster-create:
 .PHONY: cluster-delete
 cluster-delete:
 	gcloud container clusters delete $(CLUSTER_NAME) \
+		--project $(PROJECT_ID) \
 		--zone $(ZONE) --quiet
 
 # ==== デプロイ & 管理 ====
@@ -53,9 +55,13 @@ rollout-status:
 
 .PHONY: get-ip
 get-ip:
-	kubectl get svc $(IMAGE_NAME)-lb \
+	@echo "External IP/Hostname:"
+	@kubectl get svc $(IMAGE_NAME)-lb \
 		-n $(NAMESPACE) \
-		-o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+		-o jsonpath='{.status.loadBalancer.ingress[0].ip}{"\\n"}{.status.loadBalancer.ingress[0].hostname}{"\\n"}'
+	@echo ""
+	@echo "Full service details:"
+	@kubectl get svc $(IMAGE_NAME)-lb -o wide
 
 # ==== クリーンアップ ====
 .PHONY: clean
