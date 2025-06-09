@@ -62,11 +62,6 @@ get-ip:
 	@echo "Full service details:"
 	@kubectl get svc $(IMAGE_NAME)-lb -o wide
 
-# マニフェストを適用
-.PHONY: apply
-apply:
-	kubectl apply -f $(DEPLOYMENT_YAML)
-
 # Podの状態を確認
 .PHONY: get-pods
 get-pods:
