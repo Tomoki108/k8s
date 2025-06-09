@@ -15,6 +15,7 @@ spec:
       containers:
       - name: simple-api
         image: asia-northeast1-docker.pkg.dev/tomoki-sandbox/my-repo/simple-api:v1
+        imagePullPolicy: Always
         ports:
         - containerPort: 8080
         resources:
