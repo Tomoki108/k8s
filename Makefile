@@ -21,12 +21,11 @@ all: build push deploy
 # ==== コンテナビルド & プッシュ ====
 .PHONY: build
 build:
-	docker build -t $(IMAGE_URI) .
+	docker buildx build --platform linux/amd64 -t $(IMAGE_URI) . --push
 
 .PHONY: push
 push: build
-	gcloud auth configure-docker $(AR_HOST) --quiet
-	docker push $(IMAGE_URI)
+	@echo "Image already pushed via buildx"
 
 # ==== GKE クラスター操作 ====
 .PHONY: cluster-create
